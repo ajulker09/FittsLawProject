@@ -1057,7 +1057,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 0
+  m_PresetInfoIsWorld: 1
 --- !u!114 &8018535747830419428
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13252,7 +13252,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   instructionUI: {fileID: 479081359879698059}
-  calibrationUI: {fileID: 0}
   circleSpawner: {fileID: 0}
 --- !u!1 &6711851982683668277
 GameObject:
