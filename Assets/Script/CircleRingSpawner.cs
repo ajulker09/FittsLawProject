@@ -192,7 +192,21 @@ public class CircleRingSpawner : MonoBehaviour
             ChangeColorOnTouch script = circle.GetComponent<ChangeColorOnTouch>();
 
             script.id = i;
-            //script.finger = indexFinger;
+            //script.finger = indexFinger; 
+            var wrapper = circle.GetComponent<Oculus.Interaction.InteractableUnityEventWrapper>();
+            if (wrapper != null)
+            {
+                wrapper.WhenHover.RemoveAllListeners();
+                wrapper.WhenUnhover.RemoveAllListeners();
+                wrapper.WhenSelect.RemoveAllListeners();
+                wrapper.WhenUnselect.RemoveAllListeners();
+
+                wrapper.WhenHover.AddListener(script.OnHover);
+                wrapper.WhenUnhover.AddListener(script.OnUnhover);
+                wrapper.WhenSelect.AddListener(script.OnSelect);
+                wrapper.WhenUnselect.AddListener(script.OnUnselect);
+            }
+
 
             circles.Add(circle);
         }

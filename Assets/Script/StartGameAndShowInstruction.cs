@@ -25,7 +25,7 @@ public class StartGameAndShowInstruction : MonoBehaviour
         string input = participantInput.text;
         if (!string.IsNullOrEmpty(input))
         {
-            ExperimentManager manager = experiment.GetComponent<ExperimentManager>();
+            ExperimentManager manager = experiment.GetComponent<ExperimentManager>(); 
 
             Debug.Log("Participant ID: " + input);
 

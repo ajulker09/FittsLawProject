@@ -1,19 +1,20 @@
 ﻿using UnityEngine;
 using Oculus.Interaction;
-using System.Collections; 
+using System.Collections;
 
 public class ChangeColorOnTouch : MonoBehaviour
 {
     private Renderer rend;
-    public Color touchColor = Color.white; 
-    public Color hitColor = Color.blue;    
+
+    public Color touchColor = Color.white;
+    public Color hitColor = Color.blue;
     private Color originalColor;
+
     public int id;
 
     private Vector3 entryPoint;
     private float entryTime;
 
-    
     public bool hasBeenClicked = false;
 
     void Awake()
@@ -24,8 +25,7 @@ public class ChangeColorOnTouch : MonoBehaviour
 
     public void OnHover()
     {
-        
-        if (id == CircleRingSpawner.sequence[CircleRingSpawner.currentTargetIndex] && !hasBeenClicked)
+        if (!hasBeenClicked)
         {
             originalColor = rend.material.color;
             rend.material.color = touchColor;
@@ -34,8 +34,7 @@ public class ChangeColorOnTouch : MonoBehaviour
 
     public void OnUnhover()
     {
-        
-        if (id == CircleRingSpawner.sequence[CircleRingSpawner.currentTargetIndex] && !hasBeenClicked)
+        if (!hasBeenClicked)
         {
             rend.material.color = originalColor;
         }
@@ -48,11 +47,9 @@ public class ChangeColorOnTouch : MonoBehaviour
 
         if (id == currentTargetId)
         {
-            hasBeenClicked = true; 
-
+            hasBeenClicked = true;
             entryPoint = transform.position;
             entryTime = Time.time;
-
             rend.material.color = touchColor;
         }
     }
@@ -71,8 +68,9 @@ public class ChangeColorOnTouch : MonoBehaviour
             spawner.AdvanceToNextTarget();
 
             rend.material.color = hitColor;
+            originalColor = hitColor;
 
-            // Wait 1 second, then allow hover again
+            
             StartCoroutine(ResetClickAfterDelay(1f));
         }
     }
