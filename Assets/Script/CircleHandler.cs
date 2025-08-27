@@ -16,20 +16,32 @@ public class ChangeColorOnTouch : MonoBehaviour
     private float entryTime;
 
     public bool hasBeenClicked = false;
+    private CircleRingSpawner circleRingSpawner;
+    
 
     void Awake()
     {
         rend = GetComponent<Renderer>();
-        originalColor = rend.material.color;
+        originalColor = rend.material.color; // only set once here
+        circleRingSpawner = Object.FindFirstObjectByType<CircleRingSpawner>();
+    }
+
+    
+    public void SetOriginalColor(Color c)
+    {
+        originalColor = c;
     }
 
     public void OnHover()
     {
-        if (!hasBeenClicked)
+        if (!hasBeenClicked && circleRingSpawner.getCondition() == "Visual" )
         {
-            originalColor = rend.material.color;
             rend.material.color = touchColor;
         }
+        
+        Debug.Log("In OnHover and has been clicked: " + hasBeenClicked);
+        
+        circleRingSpawner.EnterFeedback(id);
     }
 
     public void OnUnhover()
@@ -38,6 +50,8 @@ public class ChangeColorOnTouch : MonoBehaviour
         {
             rend.material.color = originalColor;
         }
+        hasBeenClicked = false;
+        Debug.Log("In OnUnHover and has been clicked: " + hasBeenClicked);
     }
 
     public void OnSelect()
@@ -50,7 +64,7 @@ public class ChangeColorOnTouch : MonoBehaviour
             hasBeenClicked = true;
             entryPoint = transform.position;
             entryTime = Time.time;
-            rend.material.color = touchColor;
+            
         }
     }
 
@@ -63,14 +77,16 @@ public class ChangeColorOnTouch : MonoBehaviour
             Vector3 exitPoint = transform.position;
             float exitTime = Time.time;
 
+
+            rend.material.color = hitColor;
+            originalColor = hitColor; 
+
+
+
             CircleRingSpawner spawner = FindObjectOfType<CircleRingSpawner>();
             spawner.RecordTouch(entryPoint, exitPoint, entryTime, exitTime);
             spawner.AdvanceToNextTarget();
 
-            rend.material.color = hitColor;
-            originalColor = hitColor;
-
-            
             StartCoroutine(ResetClickAfterDelay(1f));
         }
     }

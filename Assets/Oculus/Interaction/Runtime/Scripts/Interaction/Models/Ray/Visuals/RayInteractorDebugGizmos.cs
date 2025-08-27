@@ -1,28 +1,9 @@
-/*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- * All rights reserved.
- *
- * Licensed under the Oculus SDK License Agreement (the "License");
- * you may not use the Oculus SDK except in compliance with the License,
- * which is provided at the time of installation or download, or which
- * otherwise accompanies this software in either electronic or hard copy form.
- *
- * You may obtain a copy of the License at
- *
- * https://developer.oculus.com/licenses/oculussdk/
- *
- * Unless required by applicable law or agreed to in writing, the Oculus SDK
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 using UnityEngine;
 using UnityEngine.Assertions;
 
 namespace Oculus.Interaction
 {
+    [RequireComponent(typeof(LineRenderer))]
     public class RayInteractorDebugGizmos : MonoBehaviour
     {
         [SerializeField]
@@ -32,95 +13,70 @@ namespace Oculus.Interaction
         private float _rayWidth = 0.01f;
 
         [SerializeField]
-        private Color _normalColor = Color.red;
+        private Color _normalColor = Color.white;
 
         [SerializeField]
-        private Color _hoverColor = Color.blue;
+        private Color _hoverColor = Color.white;
 
         [SerializeField]
-        private Color _selectColor = Color.green;
+        private Color _selectColor = Color.white;
 
-        public float RayWidth
-        {
-            get
-            {
-                return _rayWidth;
-            }
-            set
-            {
-                _rayWidth = value;
-            }
-        }
-
-        public Color NormalColor
-        {
-            get
-            {
-                return _normalColor;
-            }
-            set
-            {
-                _normalColor = value;
-            }
-        }
-
-        public Color HoverColor
-        {
-            get
-            {
-                return _hoverColor;
-            }
-            set
-            {
-                _hoverColor = value;
-            }
-        }
-
-        public Color SelectColor
-        {
-            get
-            {
-                return _selectColor;
-            }
-            set
-            {
-                _selectColor = value;
-            }
-        }
+        private LineRenderer _line;
 
         protected virtual void Start()
         {
             this.AssertField(_rayInteractor, nameof(_rayInteractor));
+
+            _line = GetComponent<LineRenderer>();
+            _line.positionCount = 2;
+            _line.startWidth = _rayWidth;
+            _line.endWidth = _rayWidth;
+
+            // unlit material so it always looks like a debug gizmo
+            var mat = new Material(Shader.Find("Unlit/Color"));
+            _line.material = mat;
         }
 
         private void LateUpdate()
         {
-            if (_rayInteractor.State == InteractorState.Disabled)
+            if (_rayInteractor == null || _rayInteractor.State == InteractorState.Disabled)
             {
+                _line.enabled = false;
                 return;
             }
 
+            // choose color by interactor state
             switch (_rayInteractor.State)
             {
                 case InteractorState.Normal:
-                    DebugGizmos.Color = _normalColor;
+                    _line.material.color = _normalColor;
                     break;
                 case InteractorState.Hover:
-                    DebugGizmos.Color = _hoverColor;
+                    _line.material.color = _hoverColor;
                     break;
                 case InteractorState.Select:
-                    DebugGizmos.Color = _selectColor;
+                    _line.material.color = _selectColor;
                     break;
-                case InteractorState.Disabled:
-                    return;
             }
 
-            DebugGizmos.LineWidth = _rayWidth;
-            DebugGizmos.DrawLine(_rayInteractor.Origin, _rayInteractor.End);
+            _line.startWidth = _rayWidth;
+            _line.endWidth = _rayWidth;
+
+            // draw line between origin and end
+            _line.enabled = true;
+            _line.SetPosition(0, _rayInteractor.Origin);
+            _line.SetPosition(1, _rayInteractor.End);
+        }
+
+        private void OnDisable()
+        {
+            if (_line != null)
+            {
+                _line.enabled = false; 
+            }
         }
 
         #region Inject
-
         public void InjectAllRayInteractorDebugGizmos(RayInteractor rayInteractor)
         {
             InjectRayInteractor(rayInteractor);
@@ -130,7 +86,6 @@ namespace Oculus.Interaction
         {
             _rayInteractor = rayInteractor;
         }
-
         #endregion
     }
 }

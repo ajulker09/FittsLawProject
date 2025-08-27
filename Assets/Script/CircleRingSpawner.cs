@@ -1,12 +1,11 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 
-
 public class CircleRingSpawner : MonoBehaviour
 {
-
     // Networking object, exclusively for the watch 
     public GameObject networking;
 
@@ -19,9 +18,6 @@ public class CircleRingSpawner : MonoBehaviour
     // UI Stuff
     public GameObject blockFinishedUI;
     public GameObject conditionFinishedUI;
-    public GameObject handRayInteractor;
-
-
 
     public GameObject circlePrefab;
     public GameObject Spawner;
@@ -32,19 +28,19 @@ public class CircleRingSpawner : MonoBehaviour
     private Color defaultColor = new Color(32f / 255f, 150f / 255f, 243f / 255f, 1f);
     private Color touchColor = Color.white;
 
-    
-
     public static int currentTargetIndex = 0;
-    public static List<int> sequence; //= new List<int> { 0, 6, 12, 5, 11, 4, 10, 3, 9, 2, 8, 1, 7 };
+    public static List<int> sequence;
 
     private float reactionStartTime;
     private List<GameObject> circles = new List<GameObject>();
 
+    private List<float> AMPLITUDES = new List<float> { 0.30f, 0.45f, 0.6f };
+    private List<float> WIDTHS = new List<float> { 0.025f, 0.05f, 0.1f };
 
-    private List<float> AMPLITUDES = new List<float> { 0.6f }; //{ 0.3f, 0.45f };//,0.6f}; 
-    private List<float> WIDTHS = new List<float> { 0.1f };//{ 0.025f, 0.05f, 0.1f };//, 0.15f};
+    //private List<float> AMPLITUDES = new List<float> { 0.30f };
+    //private List<float> WIDTHS = new List<float> { 0.03f };
+
     private List<Vector2> taskPairs;
-
     private int currentSequenceIndex = 0;
 
     public Vector3 center;
@@ -60,7 +56,6 @@ public class CircleRingSpawner : MonoBehaviour
     private List<float> trialStartTimes = new List<float>();
     private List<float> timeEnter = new List<float>();
     private List<float> timeExit = new List<float>();
-
 
     void OnEnable()
     {
@@ -78,7 +73,18 @@ public class CircleRingSpawner : MonoBehaviour
         taskPairs = SetupTaskPairs();
         sequence = GenerateAcrossSequence(numberOfCircles);
 
+        if (blockFinishedUI != null) blockFinishedUI.SetActive(false);
+        if (conditionFinishedUI != null) conditionFinishedUI.SetActive(false);
+
+        ClearInteractorState();
+
         StartNextSequence();
+    }
+
+    public string getCondition()
+    {
+        ExperimentManager.Condition condition = manager.GetCondition();
+        return condition.ToString();
     }
 
     private List<Vector2> SetupTaskPairs()
@@ -112,49 +118,50 @@ public class CircleRingSpawner : MonoBehaviour
 
     private void StartNextSequence()
     {
-
         if (currentSequenceIndex >= taskPairs.Count)
         {
             currentSequenceIndex = 0;
-            Debug.Log("Block " + manager.GetBlock() + " completed."); 
+            Debug.Log("Block " + manager.GetBlock() + " completed.");
             manager.IncrementBlock();
 
+            DestroyAllCircles();
+            ClearInteractorState();
 
             if (manager.GetBlock() < manager.NUM_BLOCKS)
             {
-                var gizmo = handRayInteractor.GetComponent("RayInteractorDebugGizmos");
-                if (gizmo != null)
-                {
-                    ((MonoBehaviour)gizmo).enabled = false;
-                }
-                blockFinishedUI.SetActive(true);
+                var gizmo = leftHand != null ? leftHand.GetComponent("RayInteractorDebugGizmos") : null;
+                if (gizmo != null) ((MonoBehaviour)gizmo).enabled = false;
+                var gizmo1 = rightHand != null ? rightHand.GetComponent("RayInteractorDebugGizmos") : null;
+                if (gizmo1 != null) ((MonoBehaviour)gizmo1).enabled = false;
+
+                if (blockFinishedUI != null) blockFinishedUI.SetActive(true);
                 gameObject.SetActive(false);
                 return;
-            } else {
+            }
+            else
+            {
                 Debug.Log("Condition " + manager.GetCondition() + " completed.");
-
                 manager.SetBlock(0);
                 manager.IncrementCondition();
 
-                var gizmo = handRayInteractor.GetComponent("RayInteractorDebugGizmos");
-                if (gizmo != null)
-                {
-                    ((MonoBehaviour)gizmo).enabled = false;
-                }
+                DestroyAllCircles();
+                ClearInteractorState();
 
-                conditionFinishedUI.SetActive(true);
+                var gizmo = leftHand != null ? leftHand.GetComponent("RayInteractorDebugGizmos") : null;
+                if (gizmo != null) ((MonoBehaviour)gizmo).enabled = false;
+                var gizmo1 = rightHand != null ? rightHand.GetComponent("RayInteractorDebugGizmos") : null;
+                if (gizmo1 != null) ((MonoBehaviour)gizmo1).enabled = false;
+
+                if (conditionFinishedUI != null) conditionFinishedUI.SetActive(true);
                 gameObject.SetActive(false);
                 return;
             }
         }
 
         
-        //where the circle will spawn in the game
-        center = new Vector3(0f, 1.4f, 0.3f);
-
+        center = new Vector3(0f, 1.4f, 0.1f);
 
         currentTargetIndex = 0;
-
         reactionTimes.Clear();
         targetIDs.Clear();
         targetPositions.Clear();
@@ -164,7 +171,14 @@ public class CircleRingSpawner : MonoBehaviour
         timeEnter.Clear();
         timeExit.Clear();
 
+        DestroyAllCircles();
+        ClearInteractorState();
+
         SetUpEnvironment();
+
+        
+        StartCoroutine(ResetRaysNextFrame());
+
         DisplayTarget();
     }
 
@@ -172,7 +186,6 @@ public class CircleRingSpawner : MonoBehaviour
     {
         float W = taskPairs[currentSequenceIndex].x;
         float A = taskPairs[currentSequenceIndex].y;
-
 
         for (int i = 0; i < numberOfCircles; i++)
         {
@@ -184,15 +197,15 @@ public class CircleRingSpawner : MonoBehaviour
             Quaternion rotation = Quaternion.Euler(90f, 0f, 0f);
 
             GameObject circle = Instantiate(circlePrefab, pos, rotation);
+            circle.transform.localScale = new Vector3(W, 0.001f, W);
 
-            Vector3 currentScale = circle.transform.localScale;
-            currentScale = new Vector3(W, 0.001f, W);
-            circle.transform.localScale = currentScale;
+            var col = circle.GetComponent<Collider>();
+            if (col == null) col = circle.AddComponent<SphereCollider>();
+            col.enabled = true;
 
             ChangeColorOnTouch script = circle.GetComponent<ChangeColorOnTouch>();
-
             script.id = i;
-            //script.finger = indexFinger; 
+
             var wrapper = circle.GetComponent<Oculus.Interaction.InteractableUnityEventWrapper>();
             if (wrapper != null)
             {
@@ -206,7 +219,6 @@ public class CircleRingSpawner : MonoBehaviour
                 wrapper.WhenSelect.AddListener(script.OnSelect);
                 wrapper.WhenUnselect.AddListener(script.OnUnselect);
             }
-
 
             circles.Add(circle);
         }
@@ -229,37 +241,28 @@ public class CircleRingSpawner : MonoBehaviour
     {
         int targetID = sequence[currentTargetIndex];
 
-        // Get current position
+        var script = circles[targetID].GetComponent<ChangeColorOnTouch>();
+        if (script != null) script.SetOriginalColor(newColor);
+
         Vector3 posTarget = circles[targetID].transform.position;
-
-        // Change only the Z
         posTarget.z = center.z - 0.0001f;
-
-        // Reassign modified position
         circles[targetID].transform.position = posTarget;
 
         circles[targetID].GetComponent<Renderer>().material.color = newColor;
-        reactionStartTime = Time.time;
 
+        reactionStartTime = Time.time;
     }
 
     public void AdvanceToNextTarget()
     {
         int prevID = sequence[currentTargetIndex];
 
-        // Get current position
         Vector3 posPrev = circles[prevID].transform.position;
-
-        // Change only the Z
         posPrev.z = center.z;
-
-        // Reassign modified position
         circles[prevID].transform.position = posPrev;
         circles[prevID].GetComponent<Renderer>().material.color = defaultColor;
 
-
         currentTargetIndex++;
-
 
         if (currentTargetIndex < sequence.Count)
         {
@@ -270,6 +273,9 @@ public class CircleRingSpawner : MonoBehaviour
             SaveResultsToCSV();
             DestroyAllCircles();
             currentSequenceIndex++;
+
+            ClearInteractorState();
+
             StartNextSequence();
         }
     }
@@ -288,11 +294,13 @@ public class CircleRingSpawner : MonoBehaviour
 
             for (int i = 0; i < targetIDs.Count; i++)
             {
-                writer.WriteLine($"{manager.GetPID()},{manager.GetCondition()},{manager.GetBlock()},{currentSequenceIndex + 1},{targetIDs[i]},{i},{taskPairs[currentSequenceIndex].x:F2},{taskPairs[currentSequenceIndex].y:F2}," +
+                writer.WriteLine(
+                    $"{manager.GetPID()},{manager.GetCondition()},{manager.GetBlock()},{currentSequenceIndex + 1},{targetIDs[i]},{i},{taskPairs[currentSequenceIndex].x:F2},{taskPairs[currentSequenceIndex].y:F2}," +
                     $"{targetPositions[i].x:F3},{targetPositions[i].y:F3},{targetPositions[i].z:F3}," +
                     $"{enterPositions[i].x:F3},{enterPositions[i].y:F3},{enterPositions[i].z:F3}," +
                     $"{exitPositions[i].x:F3},{exitPositions[i].y:F3},{exitPositions[i].z:F3}," +
-                    $"{trialStartTimes[i]:F3},{timeEnter[i]:F3},{timeExit[i]:F3}");
+                    $"{trialStartTimes[i]:F3},{timeEnter[i]:F3},{timeExit[i]:F3}"
+                );
             }
         }
 
@@ -303,22 +311,18 @@ public class CircleRingSpawner : MonoBehaviour
     {
         foreach (GameObject circle in circles)
         {
-            Destroy(circle);
+            if (circle != null) Destroy(circle);
         }
-
         circles.Clear();
     }
-
-
 
     public void EnterFeedback(int circleID)
     {
         ExperimentManager.Condition condition = manager.GetCondition();
-        if (condition == ExperimentManager.Condition.NonDominant
-            || condition == ExperimentManager.Condition.Dominant)
+
+        if (condition == ExperimentManager.Condition.NonDominant || condition == ExperimentManager.Condition.Dominant)
         {
             networking.GetComponent<Server>().SendMessageToClient("Enter " + circleID);
-
         }
         else if (condition == ExperimentManager.Condition.Visual)
         {
@@ -330,11 +334,44 @@ public class CircleRingSpawner : MonoBehaviour
     {
         circles[circleID].GetComponent<Renderer>().material.color = defaultColor;
         ExperimentManager.Condition condition = manager.GetCondition();
-        // If we want feedback on exit, enable this 
-        // if (condition == ExperimentManager.Condition.NonDominant 
-        //     || condition == ExperimentManager.Condition.Dominant) {
-        //     networking.GetComponent<Server>().SendMessageToClient("Exit " + circleID);
 
-        // }    
+        // If needed:
+        // if (condition == ExperimentManager.Condition.NonDominant || condition == ExperimentManager.Condition.Dominant)
+        // {
+        //     networking.GetComponent<Server>().SendMessageToClient("Exit " + circleID);
+        // }
+    }
+
+    private void ClearInteractorState()
+    {
+        if (leftHand != null)
+        {
+            var rays = leftHand.GetComponentsInChildren<Oculus.Interaction.RayInteractor>(true);
+            foreach (var r in rays) { r.enabled = false; r.enabled = true; }
+        }
+        if (rightHand != null)
+        {
+            var rays = rightHand.GetComponentsInChildren<Oculus.Interaction.RayInteractor>(true);
+            foreach (var r in rays) { r.enabled = false; r.enabled = true; }
+        }
+    }
+
+    
+    private IEnumerator ResetRaysNextFrame()
+    {
+        
+        yield return null;
+
+        if (leftHand != null)
+        {
+            leftHand.SetActive(false);
+            leftHand.SetActive(true);
+        }
+
+        if (rightHand != null)
+        {
+            rightHand.SetActive(false);
+            rightHand.SetActive(true);
+        }
     }
 }
