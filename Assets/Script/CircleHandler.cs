@@ -65,7 +65,9 @@ public class ChangeColorOnTouch : MonoBehaviour
             entryPoint = transform.position;
             entryTime = Time.time;
             
-        }
+        }      
+
+
     }
 
     public void OnUnselect()
@@ -75,7 +77,7 @@ public class ChangeColorOnTouch : MonoBehaviour
         if (id == currentTargetId)
         {
             Vector3 exitPoint = transform.position;
-            float exitTime = Time.time;
+            float selectTime = Time.time;
 
 
             rend.material.color = hitColor;
@@ -83,12 +85,12 @@ public class ChangeColorOnTouch : MonoBehaviour
 
 
 
-            CircleRingSpawner spawner = FindObjectOfType<CircleRingSpawner>();
-            spawner.RecordTouch(entryPoint, exitPoint, entryTime, exitTime);
-            spawner.AdvanceToNextTarget();
+            circleRingSpawner.RecordTouch(entryTime, selectTime);
+            circleRingSpawner.AdvanceToNextTarget();
 
             StartCoroutine(ResetClickAfterDelay(1f));
-        }
+        }         
+
     }
 
     private IEnumerator ResetClickAfterDelay(float delay)
